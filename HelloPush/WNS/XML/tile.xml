@@ -1,0 +1,14 @@
+﻿<tileflyout>
+  <visual version="3">
+    <binding template="TileFlyoutTemplate01">
+      <subtile id="1" arguments="LaunchPage=Search">
+        <text id="1">Search</text>
+        <image id="1" src="ms-appx:///assets/storelogo.png" />
+      </subtile>
+      <subtile id="5" arguments="LaunchPage=Profile&amp;Id=5">
+        <text id="1">Matt Hidinger</text>
+        <text id="2">Great seeing you last night!</text>
+      </subtile>
+    </binding>
+  </visual>
+</tileflyout>
