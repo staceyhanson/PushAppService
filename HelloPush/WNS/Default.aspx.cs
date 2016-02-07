@@ -16,53 +16,59 @@ namespace WebRole1.WNS
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-
-            if (Request.QueryString["sendNow"] != null)
+            var sendNow = Request.QueryString["sendNow"];
+            if (sendNow != null && sendNow == "true")
             {
-                var sendNow = Request.QueryString["sendNow"];
-                if (sendNow == "true")
-                {
+                Uri tempUri = new Uri(Request.QueryString["uri"]);
+                string sUri = "https://bay.notify.windows.com/?token=";
+                string sQuery = tempUri.Query;
+                string sToken = HttpUtility.ParseQueryString(sQuery).Get("token").Replace(" ", "+");
+                string uri = sUri + WebUtility.UrlEncode(sToken);
 
+                var secret = Request.QueryString["secret"];
+                //var secretIn = WebUtility.UrlDecode(Request.QueryString["secret"]);
+                //var secretOut = secretIn.Replace(" ", "+");
+                var sid = WebUtility.UrlDecode(Request.QueryString["sid"]);
+                var payload = WebUtility.UrlDecode(Request.QueryString["payload"]);
+                var notificationType = WebUtility.UrlDecode(Request.QueryString["notificationType"]);
+                var contentType = WebUtility.UrlDecode(Request.QueryString["contentType"]);
 
-                    Uri tempUri = new Uri(Request.QueryString["uri"]);
-                    string sUri = "https://bay.notify.windows.com/?token=";
-                    string sQuery = tempUri.Query;
-                    string sToken = HttpUtility.ParseQueryString(sQuery).Get("token").Replace(" ", "+");
-                    string uri = sUri + WebUtility.UrlEncode(sToken);
-
-                    var secret = Request.QueryString["secret"];
-                    //var secretIn = WebUtility.UrlDecode(Request.QueryString["secret"]);
-                    //var secretOut = secretIn.Replace(" ", "+");
-                    var sid = WebUtility.UrlDecode(Request.QueryString["sid"]);
-                    var payload = WebUtility.UrlDecode(Request.QueryString["payload"]);
-                    var notificationType = WebUtility.UrlDecode(Request.QueryString["notificationType"]);
-                    var contentType = WebUtility.UrlDecode(Request.QueryString["contentType"]);
-
-                    //if (notificationType == "tile") {PushTypeList.SelectedIndex = 0;}
-                    //if (notificationType == "toast") { PushTypeList.SelectedIndex = 1; }
-                    //if (notificationType == "badge") { PushTypeList.SelectedIndex = 4; }
+                //if (notificationType == "tile") {PushTypeList.SelectedIndex = 0;}
+                //if (notificationType == "toast") { PushTypeList.SelectedIndex = 1; }
+                //if (notificationType == "badge") { PushTypeList.SelectedIndex = 4; }
                     
 
-                    //do immediate post
-                    txtResponse.Text = PostToWns(
-                        secret,
-                        sid,
-                        uri,
-                        payload,
-                        notificationType,
-                        contentType);
-                }
+                //do immediate post
+                txtResponse.Text = PostToWns(
+                    secret,
+                    sid,
+                    uri,
+                    payload,
+                    notificationType,
+                    contentType);
+                
             }
             if (!IsPostBack)
             {
-
                 if (Request.QueryString["notificationType"] != null)
                 {
-                    var notificationType = Request.QueryString["notificationType"];
-                    if (notificationType == "wns/tile") { PushTypeList.SelectedIndex = 0; }
-                    if (notificationType == "wns/toast") { PushTypeList.SelectedIndex = 1; }
-                    if (notificationType == "wns/badge") { PushTypeList.SelectedIndex = 4; }
-                    if (notificationType == "wns/raw") { PushTypeList.SelectedIndex = 5; }
+                    switch (Request.QueryString["notificationType"])
+                    {
+                        case "wns/tile":
+                            PushTypeList.SelectedIndex = 0;
+                            break;
+                        case "wns/toast":
+                            PushTypeList.SelectedIndex = 1;
+                            break;
+                        case "wns/badge":
+                            PushTypeList.SelectedIndex = 4;
+                            break;
+                        case "wns/raw":
+                            PushTypeList.SelectedIndex = 5;
+                            break;
+                        default:
+                            throw new Exception();
+                    }
                 }
 
                 if (Request.QueryString["sid"] != null)
@@ -98,8 +104,6 @@ namespace WebRole1.WNS
 
                 if (Request.QueryString["uri"] != null)
                 {
-                    //var uri = Uri.EscapeUriString(Request.QueryString["uri"]);
-                    //txtUri.Text = uri.ToString();
                     Uri tempUri = new Uri(Request.QueryString["uri"]);
                     string sUri = "https://bay.notify.windows.com/?token=";
                     string sQuery = tempUri.Query;
@@ -273,13 +277,14 @@ namespace WebRole1.WNS
             try
             {
                 // You should cache this access token.
-                var accessToken = GetAccessToken(secret, sid);
-                txtResponse.Text += accessToken.ToString();
+                var accessToken = new OAuthToken(secret, sid);
                 byte[] contentInBytes = Encoding.UTF8.GetBytes(xml);
 
                 var request = HttpWebRequest.Create(uri) as HttpWebRequest;
 
-                if (txtTTL.Text != "") request.Headers.Add("X-WNS-TTL", txtTTL.Text);
+                request.Headers.Add("Authorization", String.Format("Bearer {0}", accessToken.AccessToken));
+
+                if (txtTTL.Text != "") { request.Headers.Add("X-WNS-TTL", txtTTL.Text); }
 
                 if (PushTypeList.SelectedIndex == 1 || PushTypeList.SelectedIndex == 2)
                 {
@@ -294,14 +299,10 @@ namespace WebRole1.WNS
                     else if (GroupAndTagList.SelectedIndex == 1) { request.Headers.Add("X-WNS-Group", txtGroupOnly.Text); }
                     else if (GroupAndTagList.SelectedIndex == 2) { request.Headers.Add("X-WNS-Tag", txtTagOnly.Text); }
                     request.ContentType = contentType;
-                    request.Headers.Add("Authorization", String.Format("Bearer {0}", accessToken.AccessToken));
                     if (PushTypeList.SelectedIndex == 2) { request.Headers.Add("X-WNS-SuppressPopup", "true"); }
 
                     using (Stream requestStream = request.GetRequestStream())
                         requestStream.Write(contentInBytes, 0, contentInBytes.Length);
-
-                    using (var webResponse = (HttpWebResponse)request.GetResponse())
-                        return webResponse.StatusCode.ToString();
 
                 }
                 else if (PushTypeList.SelectedIndex == 3)
@@ -313,37 +314,32 @@ namespace WebRole1.WNS
                     else if (GroupAndTagList.SelectedIndex == 3) { deleteArgs += "all"; }
 
                     request.Method = "DELETE";
-                    request.Headers.Add("Authorization", String.Format("Bearer {0}", accessToken.AccessToken));
                     request.Headers.Add("X-WNS-Match", deleteArgs);
 
                     //using (Stream requestStream = request.GetRequestStream())
                     //    requestStream.Write(contentInBytes, 0, contentInBytes.Length);
-
-                    using (var webResponse = (HttpWebResponse)request.GetResponse())
-                        return webResponse.StatusCode.ToString();
                 }
                 else
                 {
                     request.Method = "POST";
                     request.Headers.Add("X-WNS-Type", notificationType);
                     request.ContentType = contentType;
-                    request.Headers.Add("Authorization", String.Format("Bearer {0}", accessToken.AccessToken));
 
                     using (Stream requestStream = request.GetRequestStream())
                         requestStream.Write(contentInBytes, 0, contentInBytes.Length);
-
-                    using (var webResponse = (HttpWebResponse)request.GetResponse())
-                        return webResponse.StatusCode.ToString();
                 }
-
+                using (var webResponse = (HttpWebResponse)request.GetResponse())
+                {
+                    return webResponse.StatusCode.ToString();
+                }
 
             }
             catch (WebException webException)
             {
-                string exceptionDetails = webException.Response.Headers["WWW-Authenticate"];
-                if (exceptionDetails.Contains("Token expired"))
+                var header = webException.Response.Headers["WWW-Authenticate"];
+                if (header != null && header.Contains("Token expired"))
                 {
-                    GetAccessToken(secret, sid);
+                    new OAuthToken(secret, sid);
 
                     // We suggest that you implement a maximum retry policy.
                     return PostToWns(uri, xml, secret, sid, notificationType, contentType);
@@ -351,7 +347,7 @@ namespace WebRole1.WNS
                 else
                 {
                     // Log the response
-                    return "EXCEPTION: " + webException.Message;
+                    return "EXCEPTION: " + webException.Message + "\n" + webException.Response.Headers.ToString();
                 }
             }
             catch (Exception ex)
@@ -368,34 +364,38 @@ namespace WebRole1.WNS
             public string AccessToken { get; set; }
             [DataMember(Name = "token_type")]
             public string TokenType { get; set; }
-        }
 
-        private OAuthToken GetOAuthTokenFromJson(string jsonString)
-        {
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(jsonString)))
+            public OAuthToken(string secret, string sid)
             {
-                var ser = new DataContractJsonSerializer(typeof(OAuthToken));
-                var oAuthToken = (OAuthToken)ser.ReadObject(ms);
-                return oAuthToken;
+                GetAccessToken(secret, sid);
             }
-        }
 
-        protected OAuthToken GetAccessToken(string secret, string sid)
-        {
-            var urlEncodedSecret = HttpUtility.UrlEncode(secret);
-            var urlEncodedSid = HttpUtility.UrlEncode(sid);
-
-            var body = String.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
-                                     urlEncodedSid,
-                                     urlEncodedSecret);
-
-            string response;
-            using (var client = new WebClient())
+            private OAuthToken GetOAuthTokenFromJson(string jsonString)
             {
-                client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-                response = client.UploadString("https://login.live.com/accesstoken.srf", body);
+                using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(jsonString)))
+                {
+                    var ser = new DataContractJsonSerializer(typeof(OAuthToken));
+                    return (OAuthToken)ser.ReadObject(ms);
+                }
             }
-            return GetOAuthTokenFromJson(response);
+
+            private OAuthToken GetAccessToken(string secret, string sid)
+            {
+                var urlEncodedSecret = HttpUtility.UrlEncode(secret);
+                var urlEncodedSid = HttpUtility.UrlEncode(sid);
+
+                var body = String.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
+                                         urlEncodedSid,
+                                         urlEncodedSecret);
+
+                string response;
+                using (var client = new WebClient())
+                {
+                    client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                    response = client.UploadString("https://login.live.com/accesstoken.srf", body);
+                }
+                return GetOAuthTokenFromJson(response);
+            }
         }
     }
 }
