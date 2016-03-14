@@ -36,7 +36,7 @@ namespace WebRole1.WNS
                 //if (notificationType == "tile") {PushTypeList.SelectedIndex = 0;}
                 //if (notificationType == "toast") { PushTypeList.SelectedIndex = 1; }
                 //if (notificationType == "badge") { PushTypeList.SelectedIndex = 4; }
-                    
+
 
                 //do immediate post
                 txtResponse.Text = PostToWns(
@@ -46,7 +46,7 @@ namespace WebRole1.WNS
                     payload,
                     notificationType,
                     contentType);
-                
+
             }
             if (!IsPostBack)
             {
@@ -108,7 +108,7 @@ namespace WebRole1.WNS
                     string sUri = "https://bay.notify.windows.com/?token=";
                     string sQuery = tempUri.Query;
                     string sToken = HttpUtility.ParseQueryString(sQuery).Get("token").Replace(" ", "+");
-                    
+
                     string uri = sUri + WebUtility.UrlEncode(sToken);
                     txtUri.Text = uri;
                 }
@@ -124,18 +124,18 @@ namespace WebRole1.WNS
                 case 0:
                     divXML.Visible = true;
                     divGroupAndTagList.Visible = false;
-                    txtDiyPayload.Text = 
+                    txtDiyPayload.Text =
                         "<tile>" +
                             "<visual version=\"2\">" +
                                 "<binding template=\"TileSquare150x150Text01\" fallback=\"TileSquareText01\">" +
                                     "<text id=\"1\">Text Field 1 (larger text)</text>" +
                                     "<text id=\"2\">Text Field 2</text>" +
-                                    "<text id=\"3\">Text Field 3</text>" + 
+                                    "<text id=\"3\">Text Field 3</text>" +
                                     "<text id=\"4\">Text Field 4</text>" +
                                 "</binding>" +
                             "</visual>" +
                         "</tile>";
-                    
+
                     break;
                 case 1:
                     divXML.Visible = true;
@@ -149,33 +149,33 @@ namespace WebRole1.WNS
                                 "</binding>" +
                             "</visual>" +
                         "</toast>";
-                    
+
                     break;
                 case 2:
                     divXML.Visible = true;
                     divGroupAndTagList.Visible = true;
                     txtDiyPayload.Text =
-                        "<toast>" + 
+                        "<toast>" +
                             "<visual>" +
                                 "<binding template=\"ToastText02\">" +
-                                    "<text id=\"1\">Shhhhh...</text>" + 
+                                    "<text id=\"1\">Shhhhh...</text>" +
                                     "<text id=\"2\">So ghostly...</text>" +
                                 "</binding>" +
                             "</visual>" +
                         "</toast>";
-                    
+
                     break;
                 case 3:
                     divXML.Visible = false;
                     divGroupAndTagList.Visible = true;
-                    
+
                     break;
 
                 case 4:
                     divXML.Visible = true;
                     divGroupAndTagList.Visible = false;
                     txtDiyPayload.Text = "<badge value=\"99\"/>";
-                    
+
                     break;
 
                 case 5:
@@ -195,25 +195,25 @@ namespace WebRole1.WNS
                     divGroupAndTag.Visible = true;
                     divGroup.Visible = false;
                     divTag.Visible = false;
-                    
+
                     break;
                 case 1:
                     divGroup.Visible = true;
                     divGroupAndTag.Visible = false;
                     divTag.Visible = false;
-                    
+
                     break;
                 case 2:
                     divTag.Visible = true;
                     divGroupAndTag.Visible = false;
                     divGroup.Visible = false;
-                    
+
                     break;
                 case 3:
                     divGroupAndTag.Visible = false;
                     divGroup.Visible = false;
                     divTag.Visible = false;
-                    
+
                     break;
             }
         }
@@ -232,37 +232,53 @@ namespace WebRole1.WNS
 
                 string xml = txtDiyPayload.Text;
 
-                    if (xml != "")
+                if (xml != "")
+                {
+                    string contentType = null;
+                    string notificationType = null;
+                    switch (PushTypeList.SelectedIndex)
                     {
-                        string contentType = null;
-                        string notificationType = null;
-                        if (PushTypeList.SelectedIndex == 0) { notificationType = "wns/tile"; contentType = "text/xml"; }
-                        if (PushTypeList.SelectedIndex == 1) { notificationType = "wns/toast"; contentType = "text/xml"; }
-                        if (PushTypeList.SelectedIndex == 2) { notificationType = "wns/toast"; contentType = "text/xml"; }
-                        if (PushTypeList.SelectedIndex == 3) { notificationType = "wns/toast"; contentType = "text/xml"; }
-                        if (PushTypeList.SelectedIndex == 4) { notificationType = "wns/badge"; contentType = "text/xml"; }
-                        if (PushTypeList.SelectedIndex == 5) { notificationType = "wns/raw"; contentType = "application/octet-stream"; }
-
-
-                        var sidCookie = new HttpCookie("Sid") { Value = txtSid.Text, Expires = DateTime.Now.AddDays(7) };
-                        Response.Cookies.Add(sidCookie);
-
-                        var secretCookie = new HttpCookie("Secret") { Value = txtSecret.Text, Expires = DateTime.Now.AddDays(7) };
-                        Response.Cookies.Add(secretCookie);
-
-                        txtResponse.Text = PostToWns(
-                            txtSecret.Text,
-                            txtSid.Text,
-                            uri,
-                            xml,
-                            notificationType,
-                            contentType);
-
+                        case (0):
+                            notificationType = "wns/tile"; contentType = "text/xml";
+                            break;
+                        case (1):
+                            notificationType = "wns/toast"; contentType = "text/xml";
+                            break;
+                        case (2):
+                            notificationType = "wns/toast"; contentType = "text/xml";
+                            break;
+                        case (3):
+                            notificationType = "wns/toast"; contentType = "text/xml";
+                            break;
+                        case (4):
+                            notificationType = "wns/badge"; contentType = "text/xml";
+                            break;
+                        case (5):
+                            notificationType = "wns/raw"; contentType = "application/octet-stream";
+                            break;
+                        default:
+                            throw new Exception("Push type not recognized");
                     }
-                    else
-                    {
-                        txtResponse.Text += "You didn't enter anything";
-                    }
+
+                    var sidCookie = new HttpCookie("Sid") { Value = txtSid.Text, Expires = DateTime.Now.AddDays(7) };
+                    Response.Cookies.Add(sidCookie);
+
+                    var secretCookie = new HttpCookie("Secret") { Value = txtSecret.Text, Expires = DateTime.Now.AddDays(7) };
+                    Response.Cookies.Add(secretCookie);
+
+                    txtResponse.Text = PostToWns(
+                        txtSecret.Text,
+                        txtSid.Text,
+                        uri,
+                        xml,
+                        notificationType,
+                        contentType);
+
+                }
+                else
+                {
+                    txtResponse.Text += "You didn't enter anything";
+                }
 
             }
             catch (Exception ex)
@@ -286,7 +302,7 @@ namespace WebRole1.WNS
 
                 if (txtTTL.Text != "") { request.Headers.Add("X-WNS-TTL", txtTTL.Text); }
 
-                if (PushTypeList.SelectedIndex == 1 || PushTypeList.SelectedIndex == 2)
+                if (notificationType == "wns/toast")
                 {
                     request.Method = "POST";
                     request.Headers.Add("X-WNS-Type", notificationType);
@@ -384,7 +400,7 @@ namespace WebRole1.WNS
                 var urlEncodedSecret = HttpUtility.UrlEncode(secret);
                 var urlEncodedSid = HttpUtility.UrlEncode(sid);
 
-                var body = String.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
+                var body = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
                                          urlEncodedSid,
                                          urlEncodedSecret);
 
@@ -392,7 +408,14 @@ namespace WebRole1.WNS
                 using (var client = new WebClient())
                 {
                     client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-                    response = client.UploadString("https://login.live.com/accesstoken.srf", body);
+                    try
+                    {
+                        response = client.UploadString("https://login.live.com/accesstoken.srf", body);
+                    }
+                    catch (WebException webException)
+                    {
+                        throw new Exception("Couldn't get OAuthToken: " + webException.Message + " Make sure your appSID is formatted correctly. Did you include \"ms-app:\\\\\" before your appSID?");
+                    }
                 }
                 return GetOAuthTokenFromJson(response);
             }
