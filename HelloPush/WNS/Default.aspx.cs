@@ -293,7 +293,7 @@ namespace WebRole1.WNS
             try
             {
                 // You should cache this access token.
-                var accessToken = new OAuthToken(secret, sid);
+                var accessToken = GetAccessToken(secret, sid);
                 byte[] contentInBytes = Encoding.UTF8.GetBytes(xml);
 
                 var request = HttpWebRequest.Create(uri) as HttpWebRequest;
@@ -355,7 +355,8 @@ namespace WebRole1.WNS
                 var header = webException.Response.Headers["WWW-Authenticate"];
                 if (header != null && header.Contains("Token expired"))
                 {
-                    new OAuthToken(secret, sid);
+                    // This function call doesn't seem to store the returned accessToken
+                    GetAccessToken(secret, sid);
 
                     // We suggest that you implement a maximum retry policy.
                     return PostToWns(uri, xml, secret, sid, notificationType, contentType);
@@ -380,45 +381,43 @@ namespace WebRole1.WNS
             public string AccessToken { get; set; }
             [DataMember(Name = "token_type")]
             public string TokenType { get; set; }
+        }
 
-            public OAuthToken(string secret, string sid)
+
+        private OAuthToken GetOAuthTokenFromJson(string jsonString)
+        {
+            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(jsonString)))
             {
-                GetAccessToken(secret, sid);
-            }
-
-            private OAuthToken GetOAuthTokenFromJson(string jsonString)
-            {
-                using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(jsonString)))
-                {
-                    var ser = new DataContractJsonSerializer(typeof(OAuthToken));
-                    return (OAuthToken)ser.ReadObject(ms);
-                }
-            }
-
-            private OAuthToken GetAccessToken(string secret, string sid)
-            {
-                var urlEncodedSecret = HttpUtility.UrlEncode(secret);
-                var urlEncodedSid = HttpUtility.UrlEncode(sid);
-
-                var body = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
-                                         urlEncodedSid,
-                                         urlEncodedSecret);
-
-                string response;
-                using (var client = new WebClient())
-                {
-                    client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-                    try
-                    {
-                        response = client.UploadString("https://login.live.com/accesstoken.srf", body);
-                    }
-                    catch (WebException webException)
-                    {
-                        throw new Exception("Couldn't get OAuthToken: " + webException.Message + " Make sure your appSID is formatted correctly. Did you include \"ms-app:\\\\\" before your appSID?");
-                    }
-                }
-                return GetOAuthTokenFromJson(response);
+                var ser = new DataContractJsonSerializer(typeof(OAuthToken));
+                return (OAuthToken)ser.ReadObject(ms);
             }
         }
+
+        protected OAuthToken GetAccessToken(string secret, string sid)
+        {
+            var urlEncodedSecret = HttpUtility.UrlEncode(secret);
+            var urlEncodedSid = HttpUtility.UrlEncode(sid);
+
+            var body = string.Format("grant_type=client_credentials&client_id={0}&client_secret={1}&scope=notify.windows.com",
+                                        urlEncodedSid,
+                                        urlEncodedSecret);
+
+            string response;
+            using (var client = new WebClient())
+            {
+                client.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                try
+                {
+                    response = client.UploadString("https://login.live.com/accesstoken.srf", body);
+                }
+                catch (WebException webException)
+                {
+                    throw new Exception("Couldn't get OAuthToken: " + webException.Message + " Make sure your appSID is formatted correctly. Did you include \"ms-app:\\\\\" before your appSID?");
+                }
+            }
+
+            return GetOAuthTokenFromJson(response);
+        }
+        
     }
 }
