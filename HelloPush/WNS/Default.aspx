@@ -73,7 +73,7 @@
 
                                 <br />
                                 Expiration in seconds<br />
-                                (don&#39;t use 0, server hates it.&nbsp; Use &quot;1&quot; for instant, leave blank for none):<br />
+                                (don&#39;t use 0.&nbsp; Use &quot;1&quot; for instant, leave blank for none):<br />
                                     <asp:TextBox ID="txtTTL" runat="server" Width="135px"></asp:TextBox>
 
                                 <div runat="server" id="divGroupAndTagList" visible="False">

@@ -26,16 +26,12 @@ namespace WebRole1.WNS
                 string uri = sUri + WebUtility.UrlEncode(sToken);
 
                 var secret = Request.QueryString["secret"];
-                //var secretIn = WebUtility.UrlDecode(Request.QueryString["secret"]);
-                //var secretOut = secretIn.Replace(" ", "+");
                 var sid = WebUtility.UrlDecode(Request.QueryString["sid"]);
                 var payload = WebUtility.UrlDecode(Request.QueryString["payload"]);
                 var notificationType = WebUtility.UrlDecode(Request.QueryString["notificationType"]);
+                bool isGhostToast = !string.IsNullOrEmpty(WebUtility.UrlDecode(Request.QueryString["isGhostToast"]));
+                bool isHttpDelete = !string.IsNullOrEmpty(WebUtility.UrlDecode(Request.QueryString["isHttpDelete"]));
                 var contentType = WebUtility.UrlDecode(Request.QueryString["contentType"]);
-
-                //if (notificationType == "tile") {PushTypeList.SelectedIndex = 0;}
-                //if (notificationType == "toast") { PushTypeList.SelectedIndex = 1; }
-                //if (notificationType == "badge") { PushTypeList.SelectedIndex = 4; }
 
 
                 //do immediate post
@@ -45,6 +41,8 @@ namespace WebRole1.WNS
                     uri,
                     payload,
                     notificationType,
+                    isGhostToast,
+                    isHttpDelete,
                     contentType);
 
             }
@@ -236,6 +234,8 @@ namespace WebRole1.WNS
                 {
                     string contentType = null;
                     string notificationType = null;
+                    bool isGhostToast = false;
+                    bool isHttpDelete = false;
                     switch (PushTypeList.SelectedIndex)
                     {
                         case (0):
@@ -245,10 +245,10 @@ namespace WebRole1.WNS
                             notificationType = "wns/toast"; contentType = "text/xml";
                             break;
                         case (2):
-                            notificationType = "wns/toast"; contentType = "text/xml";
+                            notificationType = "wns/toast"; contentType = "text/xml"; isGhostToast = true ;
                             break;
                         case (3):
-                            notificationType = "wns/toast"; contentType = "text/xml";
+                            notificationType = "wns/toast"; contentType = "text/xml"; isHttpDelete = true ;
                             break;
                         case (4):
                             notificationType = "wns/badge"; contentType = "text/xml";
@@ -272,6 +272,7 @@ namespace WebRole1.WNS
                         uri,
                         xml,
                         notificationType,
+                        isGhostToast, isHttpDelete,
                         contentType);
 
                 }
@@ -288,7 +289,7 @@ namespace WebRole1.WNS
         }
 
         // Post to WNS
-        public string PostToWns(string secret, string sid, string uri, string xml, string notificationType, string contentType)
+        public string PostToWns(string secret, string sid, string uri, string xml, string notificationType, bool isGhostToast, bool isHttpDelete, string contentType)
         {
             try
             {
@@ -302,7 +303,7 @@ namespace WebRole1.WNS
 
                 if (txtTTL.Text != "") { request.Headers.Add("X-WNS-TTL", txtTTL.Text); }
 
-                if (notificationType == "wns/toast")
+                if (notificationType == "wns/toast" && !isHttpDelete)
                 {
                     request.Method = "POST";
                     request.Headers.Add("X-WNS-Type", notificationType);
@@ -315,18 +316,18 @@ namespace WebRole1.WNS
                     else if (GroupAndTagList.SelectedIndex == 1) { request.Headers.Add("X-WNS-Group", txtGroupOnly.Text); }
                     else if (GroupAndTagList.SelectedIndex == 2) { request.Headers.Add("X-WNS-Tag", txtTagOnly.Text); }
                     request.ContentType = contentType;
-                    if (PushTypeList.SelectedIndex == 2) { request.Headers.Add("X-WNS-SuppressPopup", "true"); }
+                    if (isGhostToast) { request.Headers.Add("X-WNS-SuppressPopup", "true"); }
 
                     using (Stream requestStream = request.GetRequestStream())
                         requestStream.Write(contentInBytes, 0, contentInBytes.Length);
 
                 }
-                else if (PushTypeList.SelectedIndex == 3)
+                else if (isHttpDelete)
                 {
                     string deleteArgs = "type=wns/toast;";
                     if (GroupAndTagList.SelectedIndex == 0) { deleteArgs += ("group=" + txtGroup.Text + ";tag=" + txtTag.Text); }
-                    else if (GroupAndTagList.SelectedIndex == 1) { deleteArgs += ("group=" + txtGroupOnly.Text); }
-                    else if (GroupAndTagList.SelectedIndex == 2) { deleteArgs += ("tag=" + txtTagOnly.Text); }
+                    else if (string.IsNullOrEmpty(txtTagOnly.Text)) { deleteArgs += ("group=" + txtGroupOnly.Text); }
+                    else if (string.IsNullOrEmpty(txtGroupOnly.Text)) { deleteArgs += ("tag=" + txtTagOnly.Text); }
                     else if (GroupAndTagList.SelectedIndex == 3) { deleteArgs += "all"; }
 
                     request.Method = "DELETE";
@@ -346,7 +347,7 @@ namespace WebRole1.WNS
                 }
                 using (var webResponse = (HttpWebResponse)request.GetResponse())
                 {
-                    return webResponse.StatusCode.ToString();
+                    return webResponse.StatusCode.ToString() + "\n" + webResponse.Headers.ToString();
                 }
 
             }
@@ -359,7 +360,7 @@ namespace WebRole1.WNS
                     GetAccessToken(secret, sid);
 
                     // We suggest that you implement a maximum retry policy.
-                    return PostToWns(uri, xml, secret, sid, notificationType, contentType);
+                    return PostToWns(uri, xml, secret, sid, notificationType, isGhostToast, isHttpDelete, contentType);
                 }
                 else
                 {
